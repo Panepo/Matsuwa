@@ -367,3 +367,5 @@ ModelManifest.xml
 
 # Custom ignores
 models
+images
+outputs
