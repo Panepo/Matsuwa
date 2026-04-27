@@ -1,5 +1,6 @@
 using Matsuwa;
 using Microsoft.UI;
+using System.Runtime.InteropServices;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -18,6 +19,8 @@ namespace DemoOCR
     public sealed partial class MainWindow : Window
     {
         private readonly TextRecoClient _textRecoClient = new();
+        private AzureTTSWinUI tts = null!;
+        private Task taskTts = null!;
 
         public MainWindow()
         {
@@ -126,6 +129,14 @@ namespace DemoOCR
                 TxtVehicleInfo.Text = vehicleInfo.ToString();
                 TxtVehicleInfoHeader.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
                 VehicleInfoBorder.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
+
+                string ttsText = BuildVehicleSpeechText(vehicleInfo);
+                tts = new AzureTTSWinUI(
+                    Marshal.StringToHGlobalAuto(Secret.GetAzureSpeechKey()),
+                    AzureTTSWinUI.AzureTtsVoiceName.EN_US_ARIA,
+                    string.Empty);
+                taskTts = new Task(() => tts.SynthesisToSpeakerAsync(ttsText));
+                taskTts.Start();
             }
             else
             {
@@ -134,5 +145,14 @@ namespace DemoOCR
                 VehicleInfoBorder.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
             }
         }
+            private static string BuildVehicleSpeechText(VehicleInfo info)
+            {
+                var sb = new StringBuilder("Vehicle detected.");
+                if (!string.IsNullOrEmpty(info.Year))  sb.Append($" Year: {info.Year}.");
+                if (!string.IsNullOrEmpty(info.Make))  sb.Append($" Make: {info.Make}.");
+                if (!string.IsNullOrEmpty(info.Model)) sb.Append($" Model: {info.Model}.");
+                if (!string.IsNullOrEmpty(info.Color)) sb.Append($" Color: {info.Color}.");
+                return sb.ToString();
+            }
+        }
     }
-}
