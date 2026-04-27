@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="DemoOCR.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:DemoOCR"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="DemoOCR">
+
+    <Window.SystemBackdrop>
+        <MicaBackdrop />
+    </Window.SystemBackdrop>
+
+    <Grid RowDefinitions="Auto,*" Margin="12">
+        <!-- Toolbar -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12" Margin="0,0,0,12">
+            <Button x:Name="BtnLoadImage" Content="Load Image" Click="BtnLoadImage_Click" Style="{StaticResource AccentButtonStyle}" />
+            <TextBlock x:Name="TxtStatus" VerticalAlignment="Center" Text="No image loaded." Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+        </StackPanel>
+
+        <!-- Main content -->
+        <Grid Grid.Row="1" ColumnDefinitions="*,300">
+            <!-- Image + bounding box overlay -->
+            <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Margin="0,0,8,0">
+                <Grid x:Name="ImageGrid">
+                    <Image x:Name="ImageSrc" Stretch="None" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                    <Canvas x:Name="RectCanvas" HorizontalAlignment="Left" VerticalAlignment="Top" />
+                </Grid>
+            </ScrollViewer>
+
+            <!-- OCR text result -->
+            <Grid Grid.Column="1" RowDefinitions="Auto,*">
+                <TextBlock Grid.Row="0" Text="Recognized Text" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,0,0,8" />
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <TextBlock x:Name="TxtResult" TextWrapping="Wrap" IsTextSelectionEnabled="True"
+                               FontFamily="Consolas" FontSize="13"
+                               Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>
