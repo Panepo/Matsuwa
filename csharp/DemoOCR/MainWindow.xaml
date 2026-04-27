@@ -31,13 +31,27 @@
             </ScrollViewer>
 
             <!-- OCR text result -->
-            <Grid Grid.Column="1" RowDefinitions="Auto,*">
+            <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto,Auto">
                 <TextBlock Grid.Row="0" Text="Recognized Text" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,0,0,8" />
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <TextBlock x:Name="TxtResult" TextWrapping="Wrap" IsTextSelectionEnabled="True"
                                FontFamily="Consolas" FontSize="13"
                                Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
                 </ScrollViewer>
+
+                <!-- Vehicle info panel (visible only when vehicle info is found) -->
+                <TextBlock Grid.Row="2" x:Name="TxtVehicleInfoHeader"
+                           Text="Vehicle Info" Style="{StaticResource SubtitleTextBlockStyle}"
+                           Margin="0,12,0,8" Visibility="Collapsed" />
+                <Border Grid.Row="3" x:Name="VehicleInfoBorder"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="4" Padding="10"
+                        Visibility="Collapsed">
+                    <TextBlock x:Name="TxtVehicleInfo" TextWrapping="Wrap" IsTextSelectionEnabled="True"
+                               FontFamily="Consolas" FontSize="13"
+                               Foreground="{ThemeResource TextFillColorPrimaryBrush}" />
+                </Border>
             </Grid>
         </Grid>
     </Grid>

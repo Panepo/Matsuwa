@@ -19,6 +19,7 @@ Usage examples
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 import cv2
@@ -172,12 +173,15 @@ def main() -> None:
     # Run pipeline
     # ------------------------------------------------------------------
     print("Running OCR pipeline …")
+    t_start = time.perf_counter()
     results = ocr.ocr(
         img,
         dewarp=args.dewarp,
         correct_doc_ori=args.doc_ori,
         correct_line_ori=args.line_ori,
     )
+    t_elapsed = time.perf_counter() - t_start
+    print(f"Pipeline time: {t_elapsed:.3f} s")
 
     # ------------------------------------------------------------------
     # Console output

@@ -118,6 +118,21 @@ namespace DemoOCR
             }
 
             TxtResult.Text = sb.ToString();
+
+            // Apply vehicle info filter
+            VehicleInfo vehicleInfo = VehicleInfoFilter.Extract(sb.ToString());
+            if (!vehicleInfo.IsEmpty)
+            {
+                TxtVehicleInfo.Text = vehicleInfo.ToString();
+                TxtVehicleInfoHeader.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
+                VehicleInfoBorder.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
+            }
+            else
+            {
+                TxtVehicleInfo.Text = string.Empty;
+                TxtVehicleInfoHeader.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+                VehicleInfoBorder.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+            }
         }
     }
 }
