@@ -14,6 +14,7 @@
     </Window.SystemBackdrop>
 
     <Grid RowDefinitions="Auto,*" Margin="12">
+        <MediaPlayerElement x:Name="MediaPlayer" Visibility="Collapsed" />
         <!-- Toolbar -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12" Margin="0,0,0,12">
             <Button x:Name="BtnLoadImage" Content="Load Image" Click="BtnLoadImage_Click" Style="{StaticResource AccentButtonStyle}" />

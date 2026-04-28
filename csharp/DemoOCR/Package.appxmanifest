@@ -10,14 +10,14 @@
 
   <Identity
     Name="e4283929-bf75-4ec0-89ad-0ecc4839cbce"
-    Publisher="CN=sety.ko"
+    Publisher="CN=Getac Technology Corporation"
     Version="1.0.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="e4283929-bf75-4ec0-89ad-0ecc4839cbce" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
     <DisplayName>DemoOCR</DisplayName>
-    <PublisherDisplayName>sety.ko</PublisherDisplayName>
+    <PublisherDisplayName>Getac</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 

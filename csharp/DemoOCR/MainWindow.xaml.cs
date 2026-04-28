@@ -1,6 +1,5 @@
 using Matsuwa;
 using Microsoft.UI;
-using System.Runtime.InteropServices;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -19,8 +18,7 @@ namespace DemoOCR
     public sealed partial class MainWindow : Window
     {
         private readonly TextRecoClient _textRecoClient = new();
-        private AzureTTSWinUI tts = null!;
-        private Task taskTts = null!;
+        private WinUITTS tts = null!;
 
         public MainWindow()
         {
@@ -56,7 +54,7 @@ namespace DemoOCR
                     return;
                 }
 
-                await SetImageAsync(convertedImage);
+                await SetImageAsync(SoftwareBitmap.Copy(convertedImage));
                 TxtStatus.Text = $"Running OCR on {file.Name} …";
                 await RecognizeAndDisplayAsync(convertedImage);
                 TxtStatus.Text = $"Done — {file.Name}";
@@ -131,12 +129,8 @@ namespace DemoOCR
                 VehicleInfoBorder.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
 
                 string ttsText = BuildVehicleSpeechText(vehicleInfo);
-                tts = new AzureTTSWinUI(
-                    Marshal.StringToHGlobalAuto(Secret.GetAzureSpeechKey()),
-                    AzureTTSWinUI.AzureTtsVoiceName.EN_US_ARIA,
-                    string.Empty);
-                taskTts = new Task(() => tts.SynthesisToSpeakerAsync(ttsText));
-                taskTts.Start();
+                tts = new WinUITTS("en-US");
+                await tts.SynthesisToSpeakerAsync(ttsText, MediaPlayer);
             }
             else
             {
@@ -148,9 +142,10 @@ namespace DemoOCR
             private static string BuildVehicleSpeechText(VehicleInfo info)
             {
                 var sb = new StringBuilder("Vehicle detected.");
-                if (!string.IsNullOrEmpty(info.Year))  sb.Append($" Year: {info.Year}.");
-                if (!string.IsNullOrEmpty(info.Make))  sb.Append($" Make: {info.Make}.");
-                if (!string.IsNullOrEmpty(info.Model)) sb.Append($" Model: {info.Model}.");
+                if (!string.IsNullOrEmpty(info.Year))  sb.Append($" Year: {info.Year},");
+                if (!string.IsNullOrEmpty(info.Make))  sb.Append($" Make: {info.Make},");
+                if (!string.IsNullOrEmpty(info.Model)) sb.Append($" Model: {info.Model},");
+                if (!string.IsNullOrEmpty(info.Style)) sb.Append($" Style: {info.Style},");
                 if (!string.IsNullOrEmpty(info.Color)) sb.Append($" Color: {info.Color}.");
                 return sb.ToString();
             }

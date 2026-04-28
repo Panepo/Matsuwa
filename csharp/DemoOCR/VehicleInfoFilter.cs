@@ -9,12 +9,14 @@ namespace DemoOCR
         public string Make { get; set; }
         public string Model { get; set; }
         public string Color { get; set; }
+        public string Style { get; set; }
 
         public bool IsEmpty =>
             string.IsNullOrEmpty(Year) &&
             string.IsNullOrEmpty(Make) &&
             string.IsNullOrEmpty(Model) &&
-            string.IsNullOrEmpty(Color);
+            string.IsNullOrEmpty(Color) &&
+            string.IsNullOrEmpty(Style);
 
         public override string ToString()
         {
@@ -25,7 +27,9 @@ namespace DemoOCR
             if (!string.IsNullOrEmpty(Year))  sb.AppendLine($"Year:  {Year}");
             if (!string.IsNullOrEmpty(Make))  sb.AppendLine($"Make:  {Make}");
             if (!string.IsNullOrEmpty(Model)) sb.AppendLine($"Model: {Model}");
+            if (!string.IsNullOrEmpty(Style)) sb.AppendLine($"Style: {Style}");
             if (!string.IsNullOrEmpty(Color)) sb.AppendLine($"Color: {Color}");
+            
             return sb.ToString().TrimEnd();
         }
     }
@@ -40,7 +44,7 @@ namespace DemoOCR
             if (string.IsNullOrWhiteSpace(ocrText)) return info;
 
             // Check if *** VEHICLE INFO *** marker is present
-            if (!ocrText.Contains("*** VEHICLE INFO ***", StringComparison.OrdinalIgnoreCase))
+            if (!ocrText.Contains("VEHICLE INFO", StringComparison.OrdinalIgnoreCase))
                 return info;
 
             // Split into individual lines
@@ -50,7 +54,7 @@ namespace DemoOCR
             int startIndex = -1;
             for (int i = 0; i < lines.Length; i++)
             {
-                if (lines[i].Contains("*** VEHICLE INFO ***", StringComparison.OrdinalIgnoreCase))
+                if (lines[i].Contains("VEHICLE INFO", StringComparison.OrdinalIgnoreCase))
                 {
                     startIndex = i + 1;
                     break;
@@ -71,11 +75,13 @@ namespace DemoOCR
                 if (TryExtractField(trimmed, "Year", out string year))
                     info.Year = year;
                 else if (TryExtractField(trimmed, "Make", out string make))
-                    info.Make = make;
+                    info.Make = ExtendMakerName(make);
                 else if (TryExtractField(trimmed, "Model", out string model))
                     info.Model = model;
                 else if (TryExtractField(trimmed, "Color", out string color))
                     info.Color = color;
+                else if (TryExtractField(trimmed, "Style", out string style))
+                    info.Style = style;
             }
 
             return info;
@@ -91,7 +97,7 @@ namespace DemoOCR
         private static string[] ReassembleLines(string[] lines, int startIndex)
         {
             // Known field prefixes (full names)
-            string[] knownFields = { "Year", "Make", "Model", "Color" };
+            string[] knownFields = { "Year", "Make", "Model", "Color", "Style" };
 
             var result = new System.Collections.Generic.List<string>();
 
@@ -163,6 +169,58 @@ namespace DemoOCR
                     return true;
             }
             return false;
+        }
+
+        private static readonly System.Collections.Generic.Dictionary<string, string> MakerAliases =
+            new System.Collections.Generic.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                { "ACUR",  "Acura" },
+                { "ALFA",  "Alfa Romeo" },
+                { "AUDI",  "Audi" },
+                { "BMW",   "BMW" },
+                { "BUIC",  "Buick" },
+                { "CADI",  "Cadillac" },
+                { "CHEV",  "Chevrolet" },
+                { "CHRY",  "Chrysler" },
+                { "DODG",  "Dodge" },
+                { "FIAT",  "Fiat" },
+                { "FORD",  "Ford" },
+                { "GMC",   "GMC" },
+                { "HOND",  "Honda" },
+                { "HYUN",  "Hyundai" },
+                { "INFI",  "Infiniti" },
+                { "JAGU",  "Jaguar" },
+                { "JEEP",  "Jeep" },
+                { "KIA",   "Kia" },
+                { "LAND",  "Land Rover" },
+                { "LEXU",  "Lexus" },
+                { "LINC",  "Lincoln" },
+                { "MAZD",  "Mazda" },
+                { "MERC",  "Mercedes-Benz" },
+                { "MINI",  "MINI" },
+                { "MITS",  "Mitsubishi" },
+                { "NISS",  "Nissan" },
+                { "PONT",  "Pontiac" },
+                { "PORS",  "Porsche" },
+                { "RAM",   "Ram" },
+                { "SATU",  "Saturn" },
+                { "SCION", "Scion" },
+                { "SUBA",  "Subaru" },
+                { "SUZU",  "Suzuki" },
+                { "TESL",  "Tesla" },
+                { "TOYO",  "Toyota" },
+                { "VOLK",  "Volkswagen" },
+                { "VOLV",  "Volvo" },
+            };
+
+        /// <summary>
+        /// Expands a truncated maker name (e.g. "HOND") to its full form (e.g. "Honda").
+        /// Returns the original value unchanged when no match is found.
+        /// </summary>
+        private static string ExtendMakerName(string maker)
+        {
+            if (string.IsNullOrEmpty(maker)) return maker;
+            return MakerAliases.TryGetValue(maker.Trim(), out string full) ? full : maker;
         }
 
         private static bool TryExtractField(string line, string fieldName, out string value)

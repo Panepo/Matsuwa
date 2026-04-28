@@ -13,13 +13,14 @@ namespace Matsuwa
     public class TextRecoClient
     {
         private TextRecognizer? _textRecognizer;
+        private Task _initTask;
 
         public TextRecoClient()
         {
-            InitTextRecognizer();
+            _initTask = InitTextRecognizerAsync();
         }
 
-        private static async void InitTextRecognizer()
+        private static async Task InitTextRecognizerAsync()
         {
             var readyState = TextRecognizer.GetReadyState();
             if (readyState is AIFeatureReadyState.Ready or AIFeatureReadyState.NotReady)
@@ -45,6 +46,7 @@ namespace Matsuwa
 
         public async Task<RecognizedText> RecognizeTextAsync(SoftwareBitmap bitmap)
         {
+            await _initTask;
             using var imageBuffer = ImageBuffer.CreateForSoftwareBitmap(bitmap);
             _textRecognizer ??= await TextRecognizer.CreateAsync();
             RecognizedText? result = _textRecognizer.RecognizeTextFromImage(imageBuffer);
