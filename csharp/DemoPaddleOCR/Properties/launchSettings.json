@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "DemoPaddleOCR (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "DemoPaddleOCR (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

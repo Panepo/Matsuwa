@@ -10,4 +10,10 @@
     <Platform Solution="*|x86" Project="x86" />
     <Deploy />
   </Project>
+  <Project Path="DemoPaddleOCR/DemoPaddleOCR.csproj" Id="5452a99f-6dff-468e-80f2-680fc5cfe7c3">
+    <Platform Solution="*|ARM64" Project="ARM64" />
+    <Platform Solution="*|x64" Project="x64" />
+    <Platform Solution="*|x86" Project="x86" />
+    <Deploy />
+  </Project>
 </Solution>
