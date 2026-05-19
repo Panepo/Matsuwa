@@ -7,16 +7,32 @@ namespace DemoOCR
     {
         public string Year { get; set; }
         public string Make { get; set; }
-        public string Model { get; set; }
         public string Color { get; set; }
-        public string Style { get; set; }
+        public string Expire { get; set; }
+        public string Insurance { get; set; }
 
         public bool IsEmpty =>
             string.IsNullOrEmpty(Year) &&
             string.IsNullOrEmpty(Make) &&
-            string.IsNullOrEmpty(Model) &&
             string.IsNullOrEmpty(Color) &&
-            string.IsNullOrEmpty(Style);
+            string.IsNullOrEmpty(Expire) &&
+            string.IsNullOrEmpty(Insurance);
+
+        public bool IsComplete =>
+            !string.IsNullOrEmpty(Year) &&
+            !string.IsNullOrEmpty(Make) &&
+            !string.IsNullOrEmpty(Color) &&
+            !string.IsNullOrEmpty(Expire) &&
+            !string.IsNullOrEmpty(Insurance);
+
+        public void MergeFrom(VehicleInfo other)
+        {
+            if (string.IsNullOrEmpty(Year)      && !string.IsNullOrEmpty(other.Year))      Year      = other.Year;
+            if (string.IsNullOrEmpty(Make)      && !string.IsNullOrEmpty(other.Make))      Make      = other.Make;
+            if (string.IsNullOrEmpty(Color)     && !string.IsNullOrEmpty(other.Color))     Color     = other.Color;
+            if (string.IsNullOrEmpty(Expire)    && !string.IsNullOrEmpty(other.Expire))    Expire    = other.Expire;
+            if (string.IsNullOrEmpty(Insurance) && !string.IsNullOrEmpty(other.Insurance)) Insurance = other.Insurance;
+        }
 
         public override string ToString()
         {
@@ -24,12 +40,12 @@ namespace DemoOCR
 
             var sb = new System.Text.StringBuilder();
             sb.AppendLine("=== Vehicle Info ===");
-            if (!string.IsNullOrEmpty(Year))  sb.AppendLine($"Year:  {Year}");
-            if (!string.IsNullOrEmpty(Make))  sb.AppendLine($"Make:  {Make}");
-            if (!string.IsNullOrEmpty(Model)) sb.AppendLine($"Model: {Model}");
-            if (!string.IsNullOrEmpty(Style)) sb.AppendLine($"Style: {Style}");
-            if (!string.IsNullOrEmpty(Color)) sb.AppendLine($"Color: {Color}");
-            
+            if (!string.IsNullOrEmpty(Year))      sb.AppendLine($"Year:      {Year}");
+            if (!string.IsNullOrEmpty(Make))      sb.AppendLine($"Make:      {Make}");
+            if (!string.IsNullOrEmpty(Color))     sb.AppendLine($"Color:     {Color}");
+            if (!string.IsNullOrEmpty(Expire))    sb.AppendLine($"Expire:    {Expire}");
+            if (!string.IsNullOrEmpty(Insurance)) sb.AppendLine($"Insurance: {Insurance}");
+
             return sb.ToString().TrimEnd();
         }
     }
@@ -43,48 +59,99 @@ namespace DemoOCR
             var info = new VehicleInfo();
             if (string.IsNullOrWhiteSpace(ocrText)) return info;
 
-            // Check if *** VEHICLE INFO *** marker is present
-            if (!ocrText.Contains("VEHICLE INFO", StringComparison.OrdinalIgnoreCase))
-                return info;
-
-            // Split into individual lines
             string[] lines = ocrText.Split(LineBreaks, StringSplitOptions.None);
 
-            // Find the index of the marker line
-            int startIndex = -1;
-            for (int i = 0; i < lines.Length; i++)
+            // --- VEHICLE INFO section ---
+            if (ocrText.Contains("VEHICLE INFO", StringComparison.OrdinalIgnoreCase))
             {
-                if (lines[i].Contains("VEHICLE INFO", StringComparison.OrdinalIgnoreCase))
+                int startIndex = -1;
+                for (int i = 0; i < lines.Length; i++)
                 {
-                    startIndex = i + 1;
-                    break;
+                    if (lines[i].Contains("VEHICLE INFO", StringComparison.OrdinalIgnoreCase))
+                    {
+                        startIndex = i + 1;
+                        break;
+                    }
+                }
+
+                if (startIndex >= 0)
+                {
+                    string[] vehicleFields = { "Year", "Make", "Color" };
+                    string[] fieldLines = ReassembleLines(lines, startIndex, vehicleFields);
+
+                    foreach (string line in fieldLines)
+                    {
+                        string trimmed = line.Trim();
+                        if (string.IsNullOrEmpty(trimmed)) continue;
+
+                        if (TryExtractField(trimmed, "Year", out string year))
+                            info.Year = year;
+                        else if (TryExtractField(trimmed, "Make", out string make))
+                            info.Make = ExtendMakerName(make);
+                        else if (TryExtractField(trimmed, "Color", out string color))
+                            info.Color = color;
+                    }
                 }
             }
 
-            if (startIndex < 0) return info;
-
-            // Rejoin the lines after the marker and fix the "Mode\nl: FIS" → "Model: FIS" split
-            // Strategy: iterate lines, try to match known field prefixes, handle broken lines
-            string[] fieldLines = ReassembleLines(lines, startIndex);
-
-            foreach (string line in fieldLines)
+            // --- Expiration Date (registration info section) ---
+            // OCR may scatter the date across several lines with noise words in between, e.g.:
+            //   "Expiration Date: 08/31/2"  "Recent"  "025"  "Last Updated: ..."
+            // Strategy: grab everything between "Expiration Date:" and "Last Update", then
+            // strip non-digit/slash characters to reconstruct the raw date string.
+            string joined = JoinLines(lines);
+            var expireRangeMatch = Regex.Match(joined,
+                @"Expiration\s+Date\s*:\s*(.+?)\s*Last\s+Updat",
+                RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            if (expireRangeMatch.Success)
             {
-                string trimmed = line.Trim();
-                if (string.IsNullOrEmpty(trimmed)) continue;
+                // Keep only digits and slashes, collapse to a clean date token
+                string raw = Regex.Replace(expireRangeMatch.Groups[1].Value, @"[^\d/]", "");
+                // raw should now be like "08/31/2025"
+                var dateMatch = Regex.Match(raw, @"(\d{2})/(\d{2})/(\d{4})");
+                if (dateMatch.Success)
+                {
+                    int month = int.Parse(dateMatch.Groups[1].Value);
+                    int year  = int.Parse(dateMatch.Groups[3].Value);
+                    info.Expire = $"{MonthName(month)}, {year}";
+                }
+            }
 
-                if (TryExtractField(trimmed, "Year", out string year))
-                    info.Year = year;
-                else if (TryExtractField(trimmed, "Make", out string make))
-                    info.Make = ExtendMakerName(make);
-                else if (TryExtractField(trimmed, "Model", out string model))
-                    info.Model = model;
-                else if (TryExtractField(trimmed, "Color", out string color))
-                    info.Color = color;
-                else if (TryExtractField(trimmed, "Style", out string style))
-                    info.Style = style;
+            // --- Insurance (INSURANCE COVERAGE section) ---
+            // Format: "Response code: Confirmed"
+            var insuranceMatch = Regex.Match(ocrText, @"Response\s+[Cc]ode\s*:\s*(\w+)", RegexOptions.IgnoreCase);
+            if (insuranceMatch.Success)
+            {
+                info.Insurance = insuranceMatch.Groups[1].Value.ToUpperInvariant();
             }
 
             return info;
+        }
+
+        private static string JoinLines(string[] lines)
+        {
+            // Join all lines with a space so fields split across lines can be matched
+            return string.Join(" ", lines);
+        }
+
+        private static string MonthName(int month)
+        {
+            return month switch
+            {
+                1  => "January",
+                2  => "February",
+                3  => "March",
+                4  => "April",
+                5  => "May",
+                6  => "June",
+                7  => "July",
+                8  => "August",
+                9  => "September",
+                10 => "October",
+                11 => "November",
+                12 => "December",
+                _  => month.ToString()
+            };
         }
 
         /// <summary>
@@ -94,11 +161,8 @@ namespace DemoOCR
         /// (i.e. it does not itself start with a known field prefix and the concatenation
         /// of it with the previous line produces a recognized field pattern), merge them.
         /// </summary>
-        private static string[] ReassembleLines(string[] lines, int startIndex)
+        private static string[] ReassembleLines(string[] lines, int startIndex, string[] knownFields)
         {
-            // Known field prefixes (full names)
-            string[] knownFields = { "Year", "Make", "Model", "Color", "Style" };
-
             var result = new System.Collections.Generic.List<string>();
 
             for (int i = startIndex; i < lines.Length; i++)

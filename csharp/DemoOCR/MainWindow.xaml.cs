@@ -25,6 +25,8 @@ namespace DemoOCR
             InitializeComponent();
         }
 
+        private VehicleInfo _accumulatedInfo = new VehicleInfo();
+
         private async void BtnLoadImage_Click(object sender, RoutedEventArgs e)
         {
             var picker = new FileOpenPicker();
@@ -38,34 +40,40 @@ namespace DemoOCR
             picker.FileTypeFilter.Add(".jpeg");
             picker.FileTypeFilter.Add(".bmp");
 
-            StorageFile file = await picker.PickSingleFileAsync();
-            if (file == null) return;
-
-            TxtStatus.Text = $"Loading: {file.Name} …";
-            BtnLoadImage.IsEnabled = false;
-
-            try
+            while (!_accumulatedInfo.IsComplete)
             {
-                using IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.Read);
-                SoftwareBitmap convertedImage = await LoadImageAsync(stream);
-                if (convertedImage == null)
+                StorageFile file = await picker.PickSingleFileAsync();
+                if (file == null) return;
+
+                TxtStatus.Text = $"Loading: {file.Name} …";
+                BtnLoadImage.IsEnabled = false;
+
+                try
                 {
-                    TxtStatus.Text = "Failed to load image.";
-                    return;
-                }
+                    using IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.Read);
+                    SoftwareBitmap convertedImage = await LoadImageAsync(stream);
+                    if (convertedImage == null)
+                    {
+                        TxtStatus.Text = "Failed to load image.";
+                        BtnLoadImage.IsEnabled = true;
+                        continue;
+                    }
 
-                await SetImageAsync(SoftwareBitmap.Copy(convertedImage));
-                TxtStatus.Text = $"Running OCR on {file.Name} …";
-                await RecognizeAndDisplayAsync(convertedImage);
-                TxtStatus.Text = $"Done — {file.Name}";
-            }
-            catch (Exception ex)
-            {
-                TxtStatus.Text = $"Error: {ex.Message}";
-            }
-            finally
-            {
-                BtnLoadImage.IsEnabled = true;
+                    await SetImageAsync(SoftwareBitmap.Copy(convertedImage));
+                    TxtStatus.Text = $"Running OCR on {file.Name} …";
+                    await RecognizeAndDisplayAsync(convertedImage);
+                    TxtStatus.Text = _accumulatedInfo.IsComplete
+                        ? $"Done — {file.Name}"
+                        : $"Done — {file.Name}. Select another image to fill missing info.";
+                }
+                catch (Exception ex)
+                {
+                    TxtStatus.Text = $"Error: {ex.Message}";
+                }
+                finally
+                {
+                    BtnLoadImage.IsEnabled = true;
+                }
             }
         }
 
@@ -120,17 +128,22 @@ namespace DemoOCR
 
             TxtResult.Text = sb.ToString();
 
-            // Apply vehicle info filter
+            // Apply vehicle info filter and merge into accumulated info
             VehicleInfo vehicleInfo = VehicleInfoFilter.Extract(sb.ToString());
-            if (!vehicleInfo.IsEmpty)
+            _accumulatedInfo.MergeFrom(vehicleInfo);
+
+            if (!_accumulatedInfo.IsEmpty)
             {
-                TxtVehicleInfo.Text = vehicleInfo.ToString();
+                TxtVehicleInfo.Text = _accumulatedInfo.ToString();
                 TxtVehicleInfoHeader.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
                 VehicleInfoBorder.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
 
-                string ttsText = BuildVehicleSpeechText(vehicleInfo);
-                tts = new WinUITTS("en-US");
-                await tts.SynthesisToSpeakerAsync(ttsText, MediaPlayer);
+                if (_accumulatedInfo.IsComplete)
+                {
+                    string ttsText = BuildVehicleSpeechText(_accumulatedInfo);
+                    tts = new WinUITTS("en-US");
+                    await tts.SynthesisToSpeakerAsync(ttsText, MediaPlayer);
+                }
             }
             else
             {
@@ -141,13 +154,7 @@ namespace DemoOCR
         }
             private static string BuildVehicleSpeechText(VehicleInfo info)
             {
-                var sb = new StringBuilder("Vehicle detected.");
-                if (!string.IsNullOrEmpty(info.Year))  sb.Append($" Year: {info.Year},");
-                if (!string.IsNullOrEmpty(info.Make))  sb.Append($" Make: {info.Make},");
-                if (!string.IsNullOrEmpty(info.Model)) sb.Append($" Model: {info.Model},");
-                if (!string.IsNullOrEmpty(info.Style)) sb.Append($" Style: {info.Style},");
-                if (!string.IsNullOrEmpty(info.Color)) sb.Append($" Color: {info.Color}.");
-                return sb.ToString();
+                return $"{info.Color}, {info.Year}, {info.Make}, EXPIRES {info.Expire}, Insurance {info.Insurance}";
             }
         }
     }
