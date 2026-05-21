@@ -29,51 +29,58 @@ namespace DemoOCR
 
         private async void BtnLoadImage_Click(object sender, RoutedEventArgs e)
         {
-            var picker = new FileOpenPicker();
-            // Associate the picker with the window handle
+            var picker = new FolderPicker();
             var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
             WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
 
             picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
-            picker.FileTypeFilter.Add(".png");
-            picker.FileTypeFilter.Add(".jpg");
-            picker.FileTypeFilter.Add(".jpeg");
-            picker.FileTypeFilter.Add(".bmp");
+            picker.FileTypeFilter.Add("*");
 
-            while (!_accumulatedInfo.IsComplete)
+            StorageFolder folder = await picker.PickSingleFolderAsync();
+            if (folder == null) return;
+
+            // Reset accumulated info for a new session
+            _accumulatedInfo = new VehicleInfo();
+
+            var files = await folder.GetFilesAsync();
+            BtnLoadImage.IsEnabled = false;
+
+            try
             {
-                StorageFile file = await picker.PickSingleFileAsync();
-                if (file == null) return;
-
-                TxtStatus.Text = $"Loading: {file.Name} …";
-                BtnLoadImage.IsEnabled = false;
-
-                try
+                foreach (StorageFile file in files)
                 {
-                    using IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.Read);
-                    SoftwareBitmap convertedImage = await LoadImageAsync(stream);
-                    if (convertedImage == null)
-                    {
-                        TxtStatus.Text = "Failed to load image.";
-                        BtnLoadImage.IsEnabled = true;
+                    string ext = file.FileType.ToLowerInvariant();
+                    if (ext != ".png" && ext != ".jpg" && ext != ".jpeg" && ext != ".bmp")
                         continue;
-                    }
 
-                    await SetImageAsync(SoftwareBitmap.Copy(convertedImage));
-                    TxtStatus.Text = $"Running OCR on {file.Name} …";
-                    await RecognizeAndDisplayAsync(convertedImage);
-                    TxtStatus.Text = _accumulatedInfo.IsComplete
-                        ? $"Done — {file.Name}"
-                        : $"Done — {file.Name}. Select another image to fill missing info.";
+                    if (_accumulatedInfo.IsComplete) break;
+
+                    TxtStatus.Text = $"Processing: {file.Name} …";
+
+                    try
+                    {
+                        using IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.Read);
+                        SoftwareBitmap convertedImage = await LoadImageAsync(stream);
+                        if (convertedImage == null) continue;
+
+                        await SetImageAsync(SoftwareBitmap.Copy(convertedImage));
+                        await RecognizeAndDisplayAsync(convertedImage);
+                        TxtStatus.Text = _accumulatedInfo.IsComplete
+                            ? $"Complete — all info found in {file.Name}"
+                            : $"Processed: {file.Name}";
+                    }
+                    catch (Exception ex)
+                    {
+                        TxtStatus.Text = $"Error processing {file.Name}: {ex.Message}";
+                    }
                 }
-                catch (Exception ex)
-                {
-                    TxtStatus.Text = $"Error: {ex.Message}";
-                }
-                finally
-                {
-                    BtnLoadImage.IsEnabled = true;
-                }
+
+                if (!_accumulatedInfo.IsComplete)
+                    TxtStatus.Text = "Finished — some vehicle info could not be found.";
+            }
+            finally
+            {
+                BtnLoadImage.IsEnabled = true;
             }
         }
 
